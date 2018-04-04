@@ -105,7 +105,7 @@ module RubyDB
     end
 
     def last_id
-      PersistentStorage.last_id @table_path, @table.autoincrement_primary_key
+      PersistentStorage.last_id @table_path, @table.fields_names, @table.autoincrement_primary_key.name
     end
   end
 
@@ -132,7 +132,29 @@ module RubyDB
         CSV.open(path, 'a') { |csv| csv << CSV::Row.new(headers, attrs_to_save) }
       end
 
-      def last_id(path, primary_key)
+      # https://stackoverflow.com/questions/35611916/how-to-detect-the-last-row-in-csv-ruby
+			def last_id(path, headers, primary_key)
+				File.open(path) do |file|
+					file.seek(-2, IO::SEEK_END) # pos -1 is newline at end of file
+					last_line = nil
+
+					while file.pos > 0
+            char = file.getc
+						if char == "\n"
+							last_line = file.read
+							break
+						end
+						file.pos -= 2 # getc advances position by 1
+					end
+          return if last_line.nil?
+
+					last_row = CSV.parse_line(last_line, headers: headers)
+#binding.pry
+				  last_row[primary_key]
+				end
+			end
+
+      def slow_last_id(path, _, primary_key)
         result = nil
         read_lines(path) { |row| result = row['id'] }
         result
@@ -274,11 +296,7 @@ def create_orders(amount)
 end
 
 def find_orders(amount)
-  amount.times.to_a.reverse.map do |i|
-    Order.find_by(description: "order ##{i}")
-    nil
-  end
-  nil
+	Order.find_by(description: "not found")
 end
 
 # # find data
@@ -286,8 +304,14 @@ end
 # #Order.find_by(description: "anything") # сложность O(log(N))
 # #Comment.find_by(order_id: 4) # сложность O(1)
 
+
 require 'benchmark'
-if false
+if true
+  recreate_db
+  create_orders(10)
+end
+
+if true
   puts "creation testing ------------------"
   amounts = 13.times.map { |i|  2 ** i }
   amounts.each do |amount|
@@ -305,7 +329,7 @@ if true
     recreate_db
     create_orders(amount)
 
-    total = Benchmark.measure { find_orders(amount) }.total
+    total = Benchmark.measure { 100.times { find_orders(amount) } }.total
     print amount.to_s.ljust(5)
     puts "%.3f" % total
   end
