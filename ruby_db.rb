@@ -1,3 +1,4 @@
+require 'set'
 module RubyDB
   class Database
     attr_reader :name, :tables
@@ -39,7 +40,7 @@ module RubyDB
   end
 
   class RubyDBTable
-    attr_reader :name
+    attr_reader :name, :autoincrement_primary_key
     def initialize(name)
       @name = name
       @integers = Set.new
@@ -96,9 +97,12 @@ module RubyDB
       end
     end
 
-    # save attributes values sorted by attributes names
     def create(attributes)
       PersistentStorage.append_row @table_path, @table.fields_names, attributes
+    end
+
+    def last_id
+      PersistentStorage.last_id @table_path, @table.autoincrement_primary_key
     end
   end
 
@@ -118,14 +122,21 @@ module RubyDB
 
       def append_row(path, headers, attributes)
         attributes = attributes
+        #binding.pry
         attrs_to_save = headers.map do |field|
           attributes[field]
         end
         CSV.open(path, 'a') { |csv| csv << CSV::Row.new(headers, attrs_to_save) }
       end
 
+      def last_id(path, primary_key)
+        result = nil
+        read_lines(path) { |row| result = row['id'] }
+        result
+      end
+
       def append_headers(path, headers)
-        CSV.open(path, 'a') { |csv| csv << headers.sort }
+        CSV.open(path, 'a') { |csv| csv << headers }
       end
 
       def read_lines(path, &block)
@@ -140,7 +151,7 @@ module RubyDB
 
       database.tables.each do |table|
         table_path = PersistentStorage.table_path(database, table)
-        PersistentStorage.append_headers table_path, table.fields_names.sort
+        PersistentStorage.append_headers table_path, table.fields_names
       end
     end
   end
@@ -171,12 +182,17 @@ module RubyDB
     # attributes have symbol keys
     def create(attributes)
       validate_schema!(attributes)
-      PersistentOperations.new(@schema, @table_schema).create(attributes)
+
+      attributes = attributes
+        .yield_self(&method(:set_timestamps))
+        .yield_self(&method(:set_id))
+
+      operations.create attributes
     end
 
     def find_by(attributes)
       validate_schema!(attributes)
-      PersistentOperations.new(@schema, @table_schema).find_by(attributes)
+      operations.find_by(attributes)
     end
 
     # validates names only
@@ -184,6 +200,21 @@ module RubyDB
       diff = (attributes.keys - table_schema.fields_names)
       return if diff.size == 0
       raise CreateValidationException.new("fields #{diff.inspect} aren't found")
+    end
+
+    def set_timestamps(attributes)
+      return attributes unless table_schema.fields_names.include?(:created_at)
+      attributes.merge created_at: Time.now
+    end
+
+    def set_id(attributes)
+      last_id = operations.last_id.to_i
+      id = last_id + 1
+      attributes.merge id: id
+    end
+
+    def operations
+      @operations ||= PersistentOperations.new(@schema, table_schema)
     end
   end
 
@@ -223,26 +254,39 @@ class Order
   self.table_name = :orders
 end
 
+def recreate_db
+  database = db
+
+  # initialize from scratch
+
+  RubyDB::DropDatabase.call database
+  RubyDB::CreateDatabase.call database
+end
+
 # testing
-database = db
-
-# initialize from scratch
-RubyDB::DropDatabase.call database
-RubyDB::CreateDatabase.call database
-
-# fill test data
-2.times.each do |i|
-  puts "create order: #{i}"
-  Order.create(description: "order ##{i}", department_id: 1000 + i)
+def create_orders(amount)
+  amount.times.each do |i|
+    Order.create(description: "order ##{i}", department_id: 1000 + i)
+  end
 end
 
-2.times.each do |i|
-  puts "search order: #{i}"
-  Order.find_by(description: "order ##{i}")
+def find_orders(amount)
+  puts "search in reverse ----------"
+  2.times.to_a.reverse.each do |i|
+    puts Order.find_by(description: "order ##{i}")
+  end
+
+  # find data
+  puts Order.find_by(id: 3)                    # сложность O(log(N))
+  #Order.find_by(description: "anything") # сложность O(log(N))
+  #Comment.find_by(order_id: 4) # сложность O(1)
 end
 
-# find data
-puts Order.find_by(id: 3)                    # сложность O(log(N))
-#Order.find_by(description: "anything") # сложность O(log(N))
-#Comment.find_by(order_id: 4) # сложность O(1)
-
+require 'benchmark'
+amounts = 13.times.map { |i|  2 ** i }
+amounts.each do |amount|
+  recreate_db
+  total = Benchmark.measure { create_orders(amount) }.total
+  print amount.to_s.ljust(5)
+  puts "%.3f" % total
+end
