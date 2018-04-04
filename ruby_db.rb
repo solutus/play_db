@@ -1,4 +1,7 @@
 require 'set'
+# TODO:
+# indices
+# coersion
 module RubyDB
   class Database
     attr_reader :name, :tables
@@ -271,22 +274,39 @@ def create_orders(amount)
 end
 
 def find_orders(amount)
-  puts "search in reverse ----------"
-  2.times.to_a.reverse.each do |i|
-    puts Order.find_by(description: "order ##{i}")
+  amount.times.to_a.reverse.map do |i|
+    Order.find_by(description: "order ##{i}")
+    nil
   end
-
-  # find data
-  puts Order.find_by(id: 3)                    # сложность O(log(N))
-  #Order.find_by(description: "anything") # сложность O(log(N))
-  #Comment.find_by(order_id: 4) # сложность O(1)
+  nil
 end
 
+# # find data
+# puts Order.find_by(id: 3)                    # сложность O(log(N))
+# #Order.find_by(description: "anything") # сложность O(log(N))
+# #Comment.find_by(order_id: 4) # сложность O(1)
+
 require 'benchmark'
-amounts = 13.times.map { |i|  2 ** i }
-amounts.each do |amount|
-  recreate_db
-  total = Benchmark.measure { create_orders(amount) }.total
-  print amount.to_s.ljust(5)
-  puts "%.3f" % total
+if false
+  puts "creation testing ------------------"
+  amounts = 13.times.map { |i|  2 ** i }
+  amounts.each do |amount|
+    recreate_db
+    total = Benchmark.measure { create_orders(amount) }.total
+    print amount.to_s.ljust(5)
+    puts "%.3f" % total
+  end
+end
+
+if true
+  puts "find testing ------------------"
+  amounts = 13.times.map { |i|  2 ** i }
+  amounts.each do |amount|
+    recreate_db
+    create_orders(amount)
+
+    total = Benchmark.measure { find_orders(amount) }.total
+    print amount.to_s.ljust(5)
+    puts "%.3f" % total
+  end
 end
