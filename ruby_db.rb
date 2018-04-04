@@ -133,26 +133,25 @@ module RubyDB
       end
 
       # https://stackoverflow.com/questions/35611916/how-to-detect-the-last-row-in-csv-ruby
-			def last_id(path, headers, primary_key)
-				File.open(path) do |file|
-					file.seek(-2, IO::SEEK_END) # pos -1 is newline at end of file
-					last_line = nil
+      def last_id(path, headers, primary_key)
+        File.open(path) do |file|
+          file.seek(-2, IO::SEEK_END) # pos -1 is newline at end of file
+          last_line = nil
 
-					while file.pos > 0
+          while file.pos > 0
             char = file.getc
-						if char == "\n"
-							last_line = file.read
-							break
-						end
-						file.pos -= 2 # getc advances position by 1
-					end
+            if char == "\n"
+              last_line = file.read
+              break
+            end
+            file.pos -= 2 # getc advances position by 1
+          end
           return if last_line.nil?
 
-					last_row = CSV.parse_line(last_line, headers: headers)
-#binding.pry
-				  last_row[primary_key]
-				end
-			end
+          last_row = CSV.parse_line(last_line, headers: headers)
+          last_row[primary_key]
+        end
+      end
 
       def slow_last_id(path, _, primary_key)
         result = nil
