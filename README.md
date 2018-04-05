@@ -1,5 +1,6 @@
-Database implementation with following description.
+h1.Database implementation on ruby.
 
+h2. Description
 ```ruby
 define_my_db(:my_database) do |db|
   db.create_table(:order) |table|
@@ -23,3 +24,8 @@ Order.find_by_id(3)                    # must be O(log(N))
 Order.find_by(description: "anything") # must be O(log(N))
 Comment.find_by(order_id: 4)           # must be O(1)
 ```
+
+
+h2. Testing
+
+`ruby ruby_db.rb`
