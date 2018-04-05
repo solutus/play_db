@@ -1,6 +1,6 @@
-h1.Database implementation on ruby.
+# Database implementation on ruby.
 
-h2. Description
+## Description
 ```ruby
 define_my_db(:my_database) do |db|
   db.create_table(:order) |table|
@@ -26,6 +26,6 @@ Comment.find_by(order_id: 4)           # must be O(1)
 ```
 
 
-h2. Testing
+## Testing
 
 `ruby ruby_db.rb`
