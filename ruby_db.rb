@@ -111,11 +111,11 @@ module RubyDB
 
     def create(attributes)
       @storage.append_row @table.fields_names, attributes
-      #@storage.add_indices indices_data(attributes), attributes[id_name]
+      @storage.add_indices indices_data(attributes), attributes[id_name]
     end
 
-    def update_indices
-      @storage.update_indices
+    def flush_indices
+      @storage.flush_indices
     end
 
     def id_name
@@ -225,7 +225,7 @@ module RubyDB
       end
     end
 
-    def update_indices
+    def flush_indices
       indices.values.each(&:flush_to_file)
     end
 
@@ -238,7 +238,6 @@ module RubyDB
 
       def add(value, id)
         tree[value] = id
-        flush_to_file
       end
 
       # returns id
@@ -289,7 +288,7 @@ module RubyDB
 
       def add(value, id)
         tree.add(value, id)
-        flush_to_file
+        #flush_to_file
       end
 
       # returns id
@@ -407,8 +406,8 @@ module RubyDB
       @operations ||= PersistentOperations.new(@schema, table_schema)
     end
 
-    def update_indices
-      @operations.update_indices
+    def flush_indices
+      @operations.flush_indices
     end
   end
 
@@ -464,6 +463,7 @@ def create_orders(amount)
     index = i + 1 # the same as id
     Order.create(description: "order ##{index}", department_id: 1000 + index)
   end
+  Order.flush_indices
 end
 
 def find_orders
@@ -492,7 +492,7 @@ if true
   end
 end
 
-Order.update_indices
+puts
 
 if true
   puts "find testing ------------------"
@@ -500,6 +500,7 @@ if true
   amounts.each do |amount|
     recreate_db
     create_orders(amount)
+    Order.flush_indices
 
     total = Benchmark.measure { 100000.times.each { find_orders } }.total
     print amount.to_s.ljust(10)
