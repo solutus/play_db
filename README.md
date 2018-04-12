@@ -29,3 +29,10 @@ Comment.find_by(order_id: 4)           # must be O(1)
 ## Testing
 
 `ruby ruby_db.rb`
+
+## Results
+*Restrictions:* Indices are being updated in RAM. To save it to filesystem flush_indices method must be used. 
+
+![Order.create chart](https://raw.githubusercontent.com/solutus/play_db/master/creation_chart.png)
+
+![Order.find_by chart](https://raw.githubusercontent.com/solutus/play_db/master/find_by_chart.png)
